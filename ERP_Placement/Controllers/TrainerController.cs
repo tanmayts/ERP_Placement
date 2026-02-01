@@ -36,7 +36,84 @@ namespace ERP_Placement.Controllers
             return View(dt);
         }
 
+        [HttpGet]
+        public IActionResult CompanyRegistration()
+        {
+            return View("CompanyRegistration");
+        }
 
+        [HttpGet]
+        public IActionResult CompanyList()
+        {
+            
+            DataTable dt = _dal.GetAllCompany();
+            return View("CompanyList", dt);
+            
+        }
+
+
+
+        public IActionResult AddVacancy(string id)
+        {
+            
+            return View();
+        }
+
+
+
+        [HttpPost]
+        public async Task<IActionResult> CompanySave(
+    Placement_Coordinator_Model model,
+    IFormFile CompanyLogo)
+        {
+            
+            string companyName = model.CompanyName
+                .Replace(" ", "")
+                .ToUpper();
+
+            async Task<string> SaveFile(IFormFile file, string folderName, string suffix)
+            {
+                if (file == null || file.Length == 0)
+                    return null;
+
+                string uploadPath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "img",
+                    folderName
+                );
+
+                if (!Directory.Exists(uploadPath))
+                    Directory.CreateDirectory(uploadPath);
+
+                string extension = Path.GetExtension(file.FileName);
+                string fileName = $"{companyName}_{suffix}{extension}";
+                string fullPath = Path.Combine(uploadPath, fileName);
+
+                using var stream = new FileStream(fullPath, FileMode.Create);
+                await file.CopyToAsync(stream);
+
+                // ✅ Path stored in DB
+                return $"/img/{folderName}/{fileName}";
+            }
+
+            // 🔥 SAVE LOGO
+            model.CompanyLogo = await SaveFile(
+                CompanyLogo,
+                "comapny",   // spelling preserved as you want
+                "LOGO"
+            );
+
+            model.RegisteredBy = "Placement Coordinator";
+            model.CompanyRegistrationDate = DateTime.Now;
+
+            int companyId = _dal.InsertCompany(model);
+
+            TempData["Success"] =
+                $"Company Registered Successfully! Company ID: {companyId}";
+
+            return RedirectToAction("CompanyRegistration");
+        }
 
         public ActionResult Approve(string id)
         {
